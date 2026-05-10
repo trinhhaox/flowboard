@@ -448,54 +448,23 @@ export function GenerationDialog() {
       return;
     }
     if (isPrompt) {
-      // Prompt nodes don't dispatch an image/video — they synthesise
-      // text. Behaviour:
-      //   - If the user typed something, persist it as-is.
-      //   - If empty, call autoPromptApi to compose from upstream
-      //     briefs and write the result back.
-      // Aspect/variants are irrelevant — Prompt nodes just hold text
-      // that downstream image/video nodes consume as context.
+      // Prompt nodes are user-authored seed text. The dialog is just
+      // an editor — Save persists whatever the user typed (or cleared).
+      // No auto-synth, no image/video dispatch. Downstream image/video
+      // nodes pick up this prompt as upstream context at their own
+      // dispatch time.
       const dbId = parseInt(rfId, 10);
       if (isNaN(dbId)) {
         closeGenerationDialog();
         return;
       }
-      let finalPrompt = prompt.trim();
-      if (!finalPrompt) {
-        setAutoBuilding(true);
-        useBoardStore.getState().updateNodeData(rfId, {
-          autoPromptStatus: "pending",
-        });
-        try {
-          const res = await autoPromptApi(dbId);
-          finalPrompt = res.prompt;
-          setPrompt(finalPrompt);
-          setAutoPromptUsed(true);
-          useBoardStore.getState().updateNodeData(rfId, {
-            autoPromptStatus: undefined,
-          });
-        } catch (err) {
-          setAutoBuilding(false);
-          useBoardStore.getState().updateNodeData(rfId, {
-            autoPromptStatus: "failed",
-          });
-          useGenerationStore.setState({
-            error: err instanceof Error
-              ? `Auto-prompt failed: ${err.message}`
-              : "Auto-prompt failed",
-          });
-          return;
-        }
-        setAutoBuilding(false);
-      }
-      // Persist + reflect in store. patchNode merges so other fields
-      // (title, aiBrief, …) are preserved.
+      const finalPrompt = prompt;
       useBoardStore.getState().updateNodeData(rfId, {
         prompt: finalPrompt,
-        status: "done",
+        status: finalPrompt.trim() ? "done" : "idle",
       });
       patchNode(dbId, {
-        status: "done",
+        status: finalPrompt.trim() ? "done" : "idle",
         data: { prompt: finalPrompt },
       }).catch(() => {});
       closeGenerationDialog();
@@ -653,7 +622,7 @@ export function GenerationDialog() {
                 : isStoryboard
                 ? "Generate storyboard"
                 : isPrompt
-                ? "Generate prompt"
+                ? "Edit prompt"
                 : "Generate image"}
             </h2>
             <span className="gen-dialog__subtitle">
@@ -697,6 +666,8 @@ export function GenerationDialog() {
               placeholder={
                 isVideo
                   ? "Bỏ trống để tự sinh motion prompt từ source image ✨"
+                  : isPrompt
+                  ? "Nhập prompt mồi để feed cho downstream image / video…"
                   : "Bỏ trống để tự generate prompt từ upstream nodes ✨"
               }
               disabled={isWorking}
@@ -1084,7 +1055,11 @@ export function GenerationDialog() {
                 : undefined
             }
           >
-            {isWorking ? "Building…" : "Generate ⌘↵"}
+            {isWorking
+              ? "Building…"
+              : isPrompt
+              ? "Save ⌘↵"
+              : "Generate ⌘↵"}
           </button>
         </div>
       </div>
