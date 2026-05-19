@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { mediaUrl, type ReferenceItem } from "../api/client";
+import { useBoardStore } from "../store/board";
 import { filterReferences, useReferencesStore } from "../store/references";
 
 /**
@@ -148,10 +149,23 @@ function ReferenceCard({
     e.dataTransfer.effectAllowed = "copy";
   }
 
-  function handleClick() {
-    // TODO(Phase 3): wire spawn-at-canvas-center via board store
-    // (addReferenceNode). Intentionally a no-op for now so the card is
-    // already focusable + keyboard-clickable when spawn lands.
+  async function handleClick() {
+    // Click-to-spawn: drop a new visual_asset node onto the canvas at a
+    // fixed fallback position. A future polish pass can pipe in the real
+    // canvas center via ReactFlow's screenToFlowPosition once it's
+    // exposed outside <ReactFlow> (this component lives outside that
+    // subtree, so we don't have access to the hook here).
+    const pos = { x: 200, y: 200 };
+    await useBoardStore.getState().addReferenceNode(
+      {
+        mediaId: item.mediaId,
+        aiBrief: item.aiBrief,
+        aspectRatio: item.aspectRatio,
+        kind: item.kind,
+        label: item.label,
+      },
+      pos,
+    );
   }
 
   async function commitRename() {
@@ -194,7 +208,9 @@ function ReferenceCard({
       className="reference-card"
       draggable
       onDragStart={handleDragStart}
-      onClick={handleClick}
+      onClick={() => {
+        void handleClick();
+      }}
       title={tooltip}
     >
       <div className="reference-card__thumb">
