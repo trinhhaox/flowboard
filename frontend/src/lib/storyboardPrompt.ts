@@ -9,8 +9,25 @@ export function buildStoryboardPrompt(
   grid: StoryboardGrid = "3x3",
 ): string {
   const n = grid === "2x2" ? 2 : 3;
+  const total = n * n;
   const t = topic.trim() || "untitled story";
-  return `Create visual storyboard for "${t}" as SINGLE IMAGE arranged in a ${n}x${n} layout (${n} rows, ${n} columns)`;
+  // Verbose template — earlier short version produced overlapping borders
+  // (no clear panel separators) and no per-frame captions, so the result
+  // read like a montage instead of a comic-book storyboard. This version
+  // pins the layout, numbering, and caption rules so each panel is
+  // self-explanatory at a glance.
+  return [
+    `Create a visual storyboard for "${t}" as a SINGLE IMAGE`,
+    `arranged in a ${n}x${n} comic-book grid (${n} rows, ${n} columns, ${total} panels total).`,
+    `Each panel illustrates one beat of the story.`,
+    `Panels read left-to-right, top-to-bottom in narrative order (1 → ${total}).`,
+    `STRICT layout rules:`,
+    `  • Clean WHITE GUTTERS between every panel — no overlapping borders, no bleed between scenes.`,
+    `  • Each panel is rectangular, identical size, sharply separated from its neighbors.`,
+    `  • In the TOP-LEFT corner of every panel, place a small filled CIRCLE with the panel NUMBER (1, 2, 3, …, ${total}) inside it — readable and consistent across all panels.`,
+    `  • BENEATH each panel (outside the picture area, in the white gutter), print a SHORT one-sentence CAPTION describing the action of that beat. Use clean, legible sans-serif text. Captions in the same language as the topic.`,
+    `Style: cohesive — every panel shares the same art style, color palette, and character design so the whole sheet reads as one storyboard.`,
+  ].join(" ");
 }
 
 // Locked motion prompt for video nodes whose upstream image is a
